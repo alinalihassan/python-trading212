@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "python-trading212-alinalihassan"
-version = "2.0.3"
+version = "2.0.4"
 description = "An unofficial client for the official Trading212 API"
 authors = ["Alin Ali Hassan <alinalihassan@gmail.com>"]
 readme = "README.md"
