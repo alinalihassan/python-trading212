@@ -1,39 +1,50 @@
-import os
+from typing import List, Dict, Literal
 import requests
-from typing import List, Dict
-from requests.exceptions import HTTPError
+from requests.exceptions import HTTPError, RequestException
 from trading212.models import (
-    Position, Exchange, Instrument,
-    Pie, Order, AccountCash, AccountMetadata,
-    HistoricalOrderData, LimitOrder, MarketOrder,
-    StopOrder, StopLimitOrder, PaidOutDividends,
-    Export, Report, TransactionList
+    Position,
+    Exchange,
+    Instrument,
+    Pie,
+    Order,
+    AccountCash,
+    AccountMetadata,
+    HistoricalOrderData,
+    LimitOrder,
+    MarketOrder,
+    StopOrder,
+    StopLimitOrder,
+    PaidOutDividends,
+    Export,
+    Report,
+    TransactionList,
 )
 
 
 class Trading212:
-    def __init__(self, host='live.trading212.com'):
+    def __init__(
+        self,
+        api_key: str,
+        host: Literal["live.trading212.com", "demo.trading212.com"] = "live.trading212.com",
+    ):
+        self.url = f"https://{host}/api/v0/"
+        self.api_key = api_key
+
+        if api_key is None:
+            raise Exception("Please set the TRADING_212_KEY environment variable")
+
         self.session = requests.Session()
         self.session.headers = self._authenticate()
-        host = os.getenv('TRADING212_HOST', host)
-        self.url = f"https://{host}/api/v0/"
 
     def _authenticate(self) -> Dict[str, str]:
-        try:
-            api_key = os.environ['TRADING212_API_KEY']
-        except KeyError:
-            raise Exception(
-                "Please set the TRADING212_API_KEY environment variable")
-        return {
-            "Authorization": api_key
-        }
+        return {"Authorization": self.api_key}
 
     def _get(self, endpoint: str, params=None):
         try:
             response = self.session.get(endpoint, params=params)
             response.raise_for_status()
         except HTTPError as e:
-            raise Exception(f"Error: {e}")
+            raise RequestException(f"Error: {e}") from e
         return response.json()
 
     def _post(self, endpoint: str, json: Dict):
@@ -41,7 +52,7 @@ class Trading212:
             response = self.session.post(endpoint, json=json)
             response.raise_for_status()
         except HTTPError as e:
-            raise Exception(f"Error: {e}")
+            raise RequestException(f"Error: {e}") from e
         return response.json()
 
     def _delete(self, endpoint: str):
@@ -49,7 +60,7 @@ class Trading212:
             response = self.session.delete(endpoint)
             response.raise_for_status()
         except HTTPError as e:
-            raise Exception(f"Error: {e}")
+            raise RequestException(f"Error: {e}") from e
         return response.json()
 
     def exchange_list(self) -> List[Exchange]:
@@ -122,7 +133,7 @@ class Trading212:
 
         return Pie(**response)
 
-    def delete_pie(self, id: int) -> None:
+    def delete_pie(self, id_: int) -> None:
         """Deletes a pie by ID
 
         https://t212public-api-docs.redoc.ly/#operation/delete
@@ -130,10 +141,10 @@ class Trading212:
         Args:
             id (int): the ID of the pie
         """
-        endpoint = self.url + f"equity/pies/{id}"
+        endpoint = self.url + f"equity/pies/{id_}"
         return self._delete(endpoint)
 
-    def fetch_pie(self, id: int) -> Pie:
+    def fetch_pie(self, id_: int) -> Pie:
         """Fetches a pies for the account with detailed information
 
         https://t212public-api-docs.redoc.ly/#operation/getDetailed
@@ -144,12 +155,12 @@ class Trading212:
         Returns:
             Pie: the pie
         """
-        endpoint = self.url + f"equity/pies/{id}"
+        endpoint = self.url + f"equity/pies/{id_}"
         response = self._get(endpoint)
 
         return Pie(**response)
 
-    def update_pie(self, id: int, pie: Pie) -> Pie:
+    def update_pie(self, id_: int, pie: Pie) -> Pie:
         """Updates a pie by ID
 
         https://t212public-api-docs.redoc.ly/#operation/update
@@ -161,13 +172,13 @@ class Trading212:
         Returns:
             Pie: the new pie
         """
-        endpoint = self.url + f"equity/pies/{id}"
+        endpoint = self.url + f"equity/pies/{id_}"
         response = self._post(endpoint, pie.model_dump())
 
         return Pie(**response)
 
     def fetch_all_orders(self) -> List[Order]:
-        """ Fetches all orders
+        """Fetches all orders
 
         https://t212public-api-docs.redoc.ly/#operation/orders
 
@@ -246,7 +257,7 @@ class Trading212:
 
         return Order(**response)
 
-    def cancel_order(self, id: int):
+    def cancel_order(self, id_: int):
         """Cancels an order by ID
 
         https://t212public-api-docs.redoc.ly/#operation/cancelOrder
@@ -254,10 +265,10 @@ class Trading212:
         Args:
             id (int): the ID of the order
         """
-        endpoint = self.url + f"equity/orders/{id}"
+        endpoint = self.url + f"equity/orders/{id_}"
         return self._delete(endpoint)
 
-    def fetch_order_by_id(self, id: int) -> Order:
+    def fetch_order_by_id(self, id_: int) -> Order:
         """Fetches an order by ID
 
         https://t212public-api-docs.redoc.ly/#operation/orderById
@@ -268,12 +279,12 @@ class Trading212:
         Returns:
             Order: the order
         """
-        endpoint = self.url + f"equity/orders/{id}"
+        endpoint = self.url + f"equity/orders/{id_}"
         response = self._get(endpoint)
 
         return Order(**response)
 
-    def fetch_order(self, id: int) -> Order:
+    def fetch_order(self, id_: int) -> Order:
         """Fetches an order by ID
 
         https://t212public-api-docs.redoc.ly/#operation/orderById
@@ -284,7 +295,7 @@ class Trading212:
         Returns:
             Order: the order
         """
-        endpoint = self.url + f"equity/orders/{id}"
+        endpoint = self.url + f"equity/orders/{id_}"
         response = self._get(endpoint)
 
         return Order(**response)
@@ -303,7 +314,7 @@ class Trading212:
         return AccountCash(**response)
 
     def fetch_account_metadata(self) -> AccountMetadata:
-        """ Fetches account metadata
+        """Fetches account metadata
 
         https://t212public-api-docs.redoc.ly/#operation/account
 
@@ -353,7 +364,9 @@ class Trading212:
 
         return Position(**response)
 
-    def historical_order_data(self, cursor: int, ticker: str, limit: int) -> HistoricalOrderData:
+    def historical_order_data(
+        self, cursor: int, ticker: str, limit: int
+    ) -> HistoricalOrderData:
         """Fetch historical order data
 
         https://t212public-api-docs.redoc.ly/#operation/orders_1
@@ -369,16 +382,14 @@ class Trading212:
         endpoint = self.url + "equity/history/orders"
         params = None
         if cursor or ticker or limit:
-            params = {
-                "cursor": cursor,
-                "ticker": ticker,
-                "limit": limit
-            }
+            params = {"cursor": cursor, "ticker": ticker, "limit": limit}
         response = self._get(endpoint, params)
 
         return HistoricalOrderData(**response)
 
-    def paid_out_dividends(self, cursor: int = None, ticker: str = None, limit: int = None) -> PaidOutDividends:
+    def paid_out_dividends(
+        self, cursor: int = None, ticker: str = None, limit: int = None
+    ) -> PaidOutDividends:
         """Fetch paid out dividends
 
         https://t212public-api-docs.redoc.ly/#operation/dividends
@@ -387,11 +398,9 @@ class Trading212:
             List[DividendDetails]: _description_
         """
         endpoint = self.url + "equity/dividends"
-        response = self._get(endpoint, {
-            "cursor": cursor,
-            "ticker": ticker,
-            "limit": limit
-        })
+        response = self._get(
+            endpoint, {"cursor": cursor, "ticker": ticker, "limit": limit}
+        )
 
         return PaidOutDividends(**response)
 
@@ -424,7 +433,9 @@ class Trading212:
 
         return Report(**response)
 
-    def transaction_list(self, cursor: str = None, limit: int = None) -> TransactionList:
+    def transaction_list(
+        self, cursor: str = None, limit: int = None
+    ) -> TransactionList:
         """Fetch all transactions
 
         https://t212public-api-docs.redoc.ly/#operation/transactions
@@ -433,9 +444,6 @@ class Trading212:
             List[Transaction]: list of transactions
         """
         endpoint = self.url + "history/transactions"
-        response = self._get(endpoint, {
-            "cursor": cursor,
-            "limit": limit
-        })
+        response = self._get(endpoint, {"cursor": cursor, "limit": limit})
 
         return TransactionList(**response)

@@ -142,7 +142,7 @@ class Order(BaseModel):
 
 
 class AccountCash(BaseModel):
-    blocked: float
+    blocked: Optional[float]
     free: float
     invested: float
     pieCash: float
